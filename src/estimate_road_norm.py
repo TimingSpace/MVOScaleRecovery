@@ -3,8 +3,7 @@ from scipy.spatial import Delaunay
 import cv2
 import math
 import sys
-sys.path.append('Thirdparty/py-ransac')
-from ransac import *
+from thirdparty.pyransac.ransac import *
 
 def augment(xyzs):
 	axyz = np.ones((len(xyzs), 4))
@@ -81,7 +80,6 @@ camera_focus=718.856
 camera_cx=607.1928
 camera_cy=185.2157
 
-print 'python cal motion_path pose_path'
 #initialization
 #camera_motion_path = sys.argv[1]
 #camera_pose_path = sys.argv[2]
