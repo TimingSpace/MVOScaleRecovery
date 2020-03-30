@@ -3,7 +3,7 @@ from scipy.spatial import Delaunay
 import cv2
 import math
 import sys
-from thirdparty.pyransac.ransac import *
+from thirdparty.Ransac.ransac import *
 
 def augment(xyzs):
 	axyz = np.ones((len(xyzs), 4))
