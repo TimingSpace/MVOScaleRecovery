@@ -1,8 +1,3 @@
-from scipy.spatial import Delaunay
-from estimate_road_norm import *
-import numpy as np
-import math
-from collections import deque 
 # recover ego-motion scale by road geometry information
 # @author xiangwei(wangxiangwei.cpp@gmail.com) and zhanghui()
 # 
@@ -14,6 +9,13 @@ from collections import deque
 
 
 
+from scipy.spatial import Delaunay
+from estimate_road_norm import *
+import numpy as np
+import math
+from collections import deque 
+import matplotlib.pyplot as plt
+
 
 
 class ScaleEstimator:
@@ -24,11 +26,96 @@ class ScaleEstimator:
         self.inliers = None
         self.scale_queue = deque()
         self.window_size = window_size
+        self.vanish =  185
     def initial_estimation(self,motion_matrix):
 
         return pitch_angle,rotation_angle
+    def visualize_distance(self,feature3d,feature2d,img):
+        near = np.min(feature3d[:,2])
+        far   = np.max(feature3d[:,2])
+        print(near,far)
+        for i in range(feature3d.shape[0]):
+            pos_y_norm = (feature3d[i,2]-near)/(far-near)
+            cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(int(255*pos_y_norm),0,int(255-255*pos_y_norm)),-1)
 
+
+    def visualize_feature(self,feature3d,feature2d,img):
+        heighest = np.min(feature3d[:,1])
+        lowest   = np.max(feature3d[:,1])
+        print(heighest,lowest)
+        for i in range(feature3d.shape[0]):
+            pos_y_norm = (feature3d[i,1]-heighest)/(lowest-heighest)
+            if feature3d[i][1]>0:
+                cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(int(255*pos_y_norm),0,int(255-255*pos_y_norm)),-1)
+            else:
+                cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(int(255*pos_y_norm),0,int(255-255*pos_y_norm)),-1)
+
+    def visualize(self,feature3d,feature2d,img):
+        lower_label = feature3d[:,1]>0
+        feature3d = feature3d[lower_label,:]
+        feature2d = feature2d[lower_label,:]
+        tri = Delaunay(feature2d)
+        triangle_ids = tri.simplices
+        b_matrix = np.matrix(np.ones((3,1),np.float))
+        #calculating the geometry model of each triangle
+        datas =[]
+        for triangle_id in triangle_ids:
+            data=[]
+            point_selected = feature3d[triangle_id]
+            a_array = np.array(point_selected)
+            a_matrix = np.matrix(a_array)
+            a_matrix_inv = a_matrix.I
+            norm = a_matrix_inv*b_matrix
+            norm_norm_2 = norm.T*norm#the orm of norm
+            height = 1/math.sqrt(norm_norm_2)
+            norm   = norm/math.sqrt(norm_norm_2)
+            if norm[1,0]<0:
+                norm = -norm
+                height = -height
+            data = [norm[0,0],norm[1,0],norm[2,0],height]
+            #print(data)
+            datas.append(data)
+        datas = np.array(datas)
+        datas_80 = datas[datas[:,1]>0.9847,:]
+
+        print(np.median(datas_80[:,3]))
+        precomput_h = 0.9*np.median(datas_80[:,3])
+        datas_low = datas_80[datas_80[:,3]>precomput_h,:]
+        print(datas.shape[0],datas_80.shape[0],datas_low.shape[0])
+
+        #plt.hist(feature3d[feature3d[:,1]>0,1])       
+        #np.savetxt('test_norm_height.txt',datas)
+        #plt.show()
+        for i in range(0,triangle_ids.shape[0]):
+            triangle_id = triangle_ids[i]
+            triangle_points =  np.array(feature2d[triangle_id],np.int32)
+            pts = triangle_points.reshape((-1,1,2))
+            #color = list(np.abs(datas[i,0:3]*255).astype(np.int32))
+            pitch = math.asin(datas[i,1])
+            pitch_deg = pitch*180/3.1415926
+            color = datas[i,0:3]
+            if pitch_deg>80 and datas[i,3]>precomput_h:
+                color=[0,255,0]
+                height = datas[i,3]
+                color = (abs(int(color[0]*255)),abs(int(color[1]*255)),abs(int(color[2]*255)))
+                cv2.polylines(img,[pts],True,color)
+                cv2.fillPoly(img,[pts],color)
+            elif datas[i,3]<precomput_h:
+                color=[0,0,255]
+                height = datas[i,3]
+                color = (abs(int(color[0]*255)),abs(int(color[1]*255)),abs(int(color[2]*255)))
+                cv2.polylines(img,[pts],True,color)
+                cv2.fillPoly(img,[pts],color)
+
+
+            else:
+                color=[255,0,0]
+             
     def scale_calculation(self,feature3d,feature2d):
+        
+        lower_feature_ids = feature2d[:,1]>self.vanish
+        feature2d = feature2d[lower_feature_ids,:]
+        feature3d = feature3d[lower_feature_ids,:]
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
         b_matrix = np.matrix(np.ones((3,1),np.float))
@@ -53,8 +140,10 @@ class ScaleEstimator:
 
         # initial select by prior information
         data_sub = data[data[:,1]>self.camera_pitch-95]#>80 deg
-        data_sub = data[data[:,1]<self.camera_pitch-85]#>80 deg
+        data_sub = data_sub[data[:,1]<self.camera_pitch-80]#>80 deg
         data_sub = data_sub[data_sub[:,2]>0]#under
+        precomput_h = 0.9*np.median(data_sub[:,2])
+        data_sub_low = data_sub[data_sub[:,2]>precomput_h,:]
         data_id = []
         # collect suitable points and triangle
         for i in range(0,triangle_ids.shape[0]):
@@ -63,7 +152,7 @@ class ScaleEstimator:
             height = data[i,2]
             triangle_points =  np.array(feature2d[triangle_id],np.int32)
             if(pitch_deg>self.camera_pitch-95 and pitch_deg<self.camera_pitch-85):
-                if(height>0):
+                if(height>precomput_h):
                         data_id.append(triangle_id[0])
                         data_id.append(triangle_id[1])
                         data_id.append(triangle_id[2])
@@ -81,7 +170,7 @@ class ScaleEstimator:
             inliers_2d = feature2d[inlier_id,:]
             self.inliers = inliers_2d
             outliers_2d = feature2d[inlier_id==False,:]
-
+            print('inilier',inliers.shape[0])
             road_model_ransac = np.matrix(m)
             norm = road_model_ransac[0,0:-1]
             h_bar = -road_model_ransac[0,-1]
@@ -98,7 +187,7 @@ class ScaleEstimator:
         self.scale_queue.append(self.scale)
         if len(self.scale_queue)>self.window_size:
             self.scale_queue.popleft()
-        return np.mean(self.scale_queue)
+        return np.median(self.scale_queue)
 
 
 def main():
