@@ -114,7 +114,7 @@ class VisualOdometry:
         mask_e_bool = np.array(mask_e>0).reshape(-1)
         mask_bool = mask_bool & mask_e_bool
         points_3d_selected = points_3d[:,mask_bool].T
-        print(points_3d_selected.shape)
+        #print(points_3d_selected.shape)
         points_3d_selected[:,0] = points_3d_selected[:,0]/points_3d_selected[:,3]
         points_3d_selected[:,1] = points_3d_selected[:,1]/points_3d_selected[:,3]
         points_3d_selected[:,2] = points_3d_selected[:,2]/points_3d_selected[:,3]

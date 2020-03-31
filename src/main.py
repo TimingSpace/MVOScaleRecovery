@@ -16,6 +16,7 @@ import numpy as np
 import cv2
 from thirdparty.MonocularVO.visual_odometry import PinholeCamera, VisualOdometry
 from rescale import ScaleEstimator
+from reconstruct import Reconstruct
 
 def main():
     images_path = sys.argv[1]
@@ -24,9 +25,12 @@ def main():
     #cam = PinholeCamera(640.0, 480.0, 343.8560, 344.8560, 321.1928, 231.2157)
     vo = VisualOdometry(cam)
     scale_estimator = ScaleEstimator(absolute_reference = 1.75)
+    reconstructer = Reconstruct()
     image_name = images.readline() # first line is not pointing to a image, so we read and skip it
     image_id = 0
     path=[]
+    scales=[]
+    path.append([1,0,0,0,0,1,0,0,0,0,1,0])
     bg_img= np.zeros((600,600,3), dtype=np.uint8)
     while image_name!=None:
         image_name = images.readline()
@@ -43,8 +47,9 @@ def main():
             feature2d[:,1] = feature2d[:,1]*cam.fx/vo.feature3d[:,2]+cam.cy
             #np.savetxt('feature_3d.txt',vo.feature3d)
             # uncomment to visualize the feature and triangle
-            scale_estimator.visualize(vo.feature3d,feature2d,img_bgr)
             if vo.feature3d.shape[0]>500:
+                #scale_estimator.visualize(vo.feature3d,feature2d,img_bgr)
+                #reconstructer.visualize(vo.feature3d,feature2d,img_bgr)
                 scale = scale_estimator.scale_calculation(vo.feature3d,feature2d)
                 R,t = vo.get_current_state(scale)
                 M   = np.zeros((3,4))
@@ -52,20 +57,23 @@ def main():
                 M[:,3]=t.reshape(-1)
                 M = M.reshape(-1)
                 path.append(M)
+                scales.append(scale)
             else:
                 path.append(path[-1])
-            print('scale ',scale)
+                scales.append(scales[-1])
+            print('id  ', image_id,' scale ',scale)
             # uncomment to visualize the path
             #vo.visualize(bg_img)
-        cv2.imshow('image',img_bgr)
+        #cv2.imshow('image',img_bgr)
         #cv2.imshow('src',img)
         #cv2.imshow('path',bg_img)
-        key = cv2.waitKey(1)
+        #key = cv2.waitKey()
         #if(key&255)==ord('q'):
         #    break
         image_id+=1
         
     np.savetxt('path.txt',path)
+    np.savetxt('scales.txt',scales)
 
 
 if __name__ == '__main__':
