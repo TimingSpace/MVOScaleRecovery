@@ -88,7 +88,7 @@ class Reconstruct:
             datas.append(data)
         datas = np.array(datas)
         return datas
-    def depth_generate(self,tri,datas):
+    def depth_generate(self,tri,datas,img):
         depth_img = np.zeros((self.cam.height,self.cam.width,3))
         pixel_tris = tri.find_simplex(self.pixel_ori)
         self.pixel_tris = pixel_tris.reshape(self.cam.height,self.cam.width)
@@ -109,10 +109,10 @@ class Reconstruct:
                     point_clouds.append(point)
                     colors.append(img[v,u,::-1]/255.0)
         depth_img = depth_img/np.max(depth_img)
-        #pcd = o3d.geometry.PointCloud()
-        #pcd.points = o3d.utility.Vector3dVector(np.array(point_clouds))
-        #pcd.colors = o3d.utility.Vector3dVector(np.array(colors))
-        #o3d.io.write_point_cloud("pointcloud.ply", pcd)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(np.array(point_clouds))
+        pcd.colors = o3d.utility.Vector3dVector(np.array(colors))
+        o3d.io.write_point_cloud("pointcloud.ply", pcd)
         cv2.imshow('img_depth',depth_img/np.max(depth_img))
         print(np.min(depth_img),np.max(depth_img),np.mean(depth_img))
 
@@ -186,6 +186,7 @@ class Reconstruct:
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
         datas = self.triangle_model(feature3d,triangle_ids)
+        self.depth_generate(tri,datas,img_c)
         self.visualize_triangle(feature2d,triangle_ids,datas,img_c)
         self.visualize_feature(feature3d,feature2d,img_c)       
         cv2.imshow('img_no_outlier',img_c)

@@ -5,11 +5,17 @@ def plot_path():
     for i in range(1, len(sys.argv)):
         path_vo = np.loadtxt(sys.argv[i]) 
         plt.plot(path_vo[:,3],path_vo[:,11])
+    plt.xlabel('x/m')
+    plt.ylabel('y/m')
+    plt.title('PATH')
     plt.show()
 
 def plot_scale():
     for i in range(1, len(sys.argv)):
         plt.plot(np.loadtxt(sys.argv[i]))
+    plt.xlabel('frame')
+    plt.ylabel('scale')
+    plt.title('SCALE')
     plt.show()
 
 def main():

@@ -50,9 +50,9 @@ def main():
             feature2d[:,0] = feature2d[:,0]*cam.fx/vo.feature3d[:,2]+cam.cx
             feature2d[:,1] = feature2d[:,1]*cam.fx/vo.feature3d[:,2]+cam.cy
             #np.savetxt('feature_3d.txt',vo.feature3d)
-            # uncomment to visualize the feature and triangle
             if vo.feature3d.shape[0]>500:
                 scale = scale_estimator.scale_calculation(vo.feature3d,feature2d)
+                # uncomment to visualize the feature and triangle
                 #scale_estimator.visualize(vo.feature3d,feature2d,img_bgr)
                 #reconstructer.visualize(vo.feature3d,feature2d,img_bgr)
                 R,t = vo.get_current_state(scale)
