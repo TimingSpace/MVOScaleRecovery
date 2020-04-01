@@ -3,7 +3,8 @@ Recover the scale of monocular visual odometry
 
 # RUN
 1. save your image name in path\_to\_image\_list by `find path/| sort >path_to_image_list`
-2. run
+2. modify the `src/param.py` based on your dataset 
+3. run
 `python3 src/main.py path_to_image_list`
 
 # Note
