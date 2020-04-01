@@ -21,36 +21,40 @@ from reconstruct import Reconstruct
 def main():
     images_path = sys.argv[1]
     images      = open(images_path)
+    image_name = images.readline() # first line is not pointing to a image, so we read and skip it
+    image_names= images.read().split('\n')
     cam = PinholeCamera(1241.0, 376.0, 718.8560, 718.8560, 607.1928, 185.2157)
     #cam = PinholeCamera(640.0, 480.0, 343.8560, 344.8560, 321.1928, 231.2157)
     vo = VisualOdometry(cam)
     scale_estimator = ScaleEstimator(absolute_reference = 1.75)
-    reconstructer = Reconstruct()
-    image_name = images.readline() # first line is not pointing to a image, so we read and skip it
+    reconstructer = Reconstruct(cam)
     image_id = 0
     path=[]
     scales=[]
     path.append([1,0,0,0,0,1,0,0,0,0,1,0])
     bg_img= np.zeros((600,600,3), dtype=np.uint8)
-    while image_name!=None:
-        image_name = images.readline()
+    begin_id = 0
+    for image_name in image_names:
+        if image_id<begin_id:
+            image_id+=1
+            continue
+        print(image_name)
         if len(image_name) == 0:
             break
-        image_name=image_name[:-1]
         img = cv2.imread(image_name,0)
         img_bgr = cv2.imread(image_name)
         vo.update(img,image_id)
         
-        if image_id>0:
+        if image_id>begin_id:
             feature2d = vo.feature3d[:,0:2].copy()
             feature2d[:,0] = feature2d[:,0]*cam.fx/vo.feature3d[:,2]+cam.cx
             feature2d[:,1] = feature2d[:,1]*cam.fx/vo.feature3d[:,2]+cam.cy
             #np.savetxt('feature_3d.txt',vo.feature3d)
             # uncomment to visualize the feature and triangle
             if vo.feature3d.shape[0]>500:
+                scale = scale_estimator.scale_calculation(vo.feature3d,feature2d)
                 #scale_estimator.visualize(vo.feature3d,feature2d,img_bgr)
                 #reconstructer.visualize(vo.feature3d,feature2d,img_bgr)
-                scale = scale_estimator.scale_calculation(vo.feature3d,feature2d)
                 R,t = vo.get_current_state(scale)
                 M   = np.zeros((3,4))
                 M[:,0:3]=R
@@ -62,14 +66,6 @@ def main():
                 path.append(path[-1])
                 scales.append(scales[-1])
             print('id  ', image_id,' scale ',scale)
-            # uncomment to visualize the path
-            #vo.visualize(bg_img)
-        #cv2.imshow('image',img_bgr)
-        #cv2.imshow('src',img)
-        #cv2.imshow('path',bg_img)
-        #key = cv2.waitKey()
-        #if(key&255)==ord('q'):
-        #    break
         image_id+=1
         
     np.savetxt('path.txt',path)

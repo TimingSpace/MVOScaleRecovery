@@ -25,8 +25,8 @@ def featureTracking(image_ref, image_cur, px_ref):
 class PinholeCamera:
     def __init__(self, width, height, fx, fy, cx, cy, 
                 k1=0.0, k2=0.0, p1=0.0, p2=0.0, k3=0.0):
-        self.width = width
-        self.height = height
+        self.width = int(width)
+        self.height = int(height)
         self.fx = fx
         self.fy = fy
         self.cx = cx

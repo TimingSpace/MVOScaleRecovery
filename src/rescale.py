@@ -36,7 +36,7 @@ class ScaleEstimator:
         print(near,far)
         for i in range(feature3d.shape[0]):
             pos_y_norm = (feature3d[i,2]-near)/(far-near)
-            cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(int(255*pos_y_norm),0,int(255-255*pos_y_norm)),-1)
+            cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(pos_y_norm,0,1-pos_y_norm),-1)
 
 
     def visualize_feature(self,feature3d,feature2d,img):
@@ -114,6 +114,40 @@ class ScaleEstimator:
                 color = (abs(int(color[0]*255)),abs(int(color[1]*255)),abs(int(color[2]*255)))
                 cv2.polylines(img,[pts],True,color)
                 #cv2.fillPoly(img,[pts],color)
+    '''
+    check the three vertice in triangle whether satisfy
+    (d_1-d_2)*(v_1-v_2)<=0 if not they are outlier
+    True means inlier
+    '''
+    def check_triangle(self,v,d):
+        flag=[False,False,False]
+        a = (v[0]-v[1])*(d[0]-d[1])
+        b = (v[0]-v[2])*(d[0]-d[2])
+        c = (v[1]-v[2])*(d[1]-d[2])
+        if a>0:
+            flag[0]=True
+            flag[1]=True
+        if b>0:
+            flag[0]=True
+            flag[1]=True
+        if c>0:
+            flag[1]=True
+            flag[2]=True
+        return flag
+
+    def find_outliers(self,feature3d,feature2d,triangle_ids):
+        # suppose every is inlier
+        outliers = np.ones((feature3d.shape[0]))
+        for triangle_id in triangle_ids:
+            data=[]
+            depths   = feature3d[triangle_id,2]
+            pixel_vs = feature2d[triangle_id,1]
+            flag    = self.check_triangle(pixel_vs,depths)
+            outlier = triangle_id[flag] 
+            outliers[outlier]-=np.ones(outliers[outlier].shape[0])
+        
+        return outliers
+
 
     def scale_calculation(self,feature3d,feature2d):
         
@@ -122,6 +156,16 @@ class ScaleEstimator:
         feature3d = feature3d[lower_feature_ids,:]
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
+        outliers = self.find_outliers(feature3d,feature2d,triangle_ids)
+
+        print('feature rejected ',np.sum(outliers<0))
+        print('feature left     ',np.sum(outliers>=0))
+        if(np.sum(outliers==1)>10):
+            feature2d = feature2d[outliers>=0,:]
+            feature3d = feature3d[outliers>=0,:]
+            tri = Delaunay(feature2d)
+            triangle_ids = tri.simplices
+
         b_matrix = np.matrix(np.ones((3,1),np.float))
         data = []
         #calculating the geometry model of each triangle
@@ -187,7 +231,13 @@ class ScaleEstimator:
             ransac_camera_height = 1/norm_norm
             pitch = math.asin(norm[0,1]/norm_norm)
             scale = self.absolute_reference/ransac_camera_height
-            self.scale = scale 
+#0.3 is the max accellerate
+            if scale - self.scale >0.3:
+                self.scale += 0.3 
+            elif scale - self.scale<-0.3:
+                self.scale -= 0.3
+            else:
+                self.scale = scale
         self.scale_queue.append(self.scale)
         if len(self.scale_queue)>self.window_size:
             self.scale_queue.popleft()
