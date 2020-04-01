@@ -2,11 +2,12 @@
 
 import numpy as np 
 import cv2
+import param
 
 STAGE_FIRST_FRAME = 0
 STAGE_SECOND_FRAME = 1
 STAGE_DEFAULT_FRAME = 2
-kMinNumFeature = 1500
+kMinNumFeature = param.minimum_feature_for_tracking
 
 lk_params = dict(winSize  = (21, 21), 
                 #maxLevel = 3,
@@ -57,7 +58,7 @@ class VisualOdometry:
         self.feature3d= None
         #print(self.camera_matrix)
         self.trueX, self.trueY, self.trueZ = 0, 0, 0
-        self.detector = cv2.FastFeatureDetector_create(threshold=25, nonmaxSuppression=True)
+        self.detector = cv2.FastFeatureDetector_create(threshold=param.fast_threshold, nonmaxSuppression=True)
         self.annotations = None
         if annotations!=None:
             with open(annotations) as f:
@@ -124,6 +125,7 @@ class VisualOdometry:
         if(self.px_ref.shape[0] < kMinNumFeature):
             self.px_cur = self.detector.detect(self.new_frame)
             self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            print('detection again',self.px_ref.shape[0],kMinNumFeature,self.px_cur.shape[0])
         self.px_ref = self.px_cur
     def get_current_state(self,scale):
         self.cur_t = self.cur_t + scale*self.cur_R.dot(self.motion_t) 

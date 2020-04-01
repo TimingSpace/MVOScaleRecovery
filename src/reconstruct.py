@@ -157,7 +157,7 @@ class Reconstruct:
     def visualize_feature(self,feature3d,feature2d,img):
         near = np.min(feature3d[:,2])
         far   = np.max(feature3d[:,2])
-        print(near,far)
+        #print(near,far)
         for i in range(feature3d.shape[0]):
             pos_y_norm = (feature3d[i,2]-near)/(far-near)
             color=(255*pos_y_norm,0,255-255*pos_y_norm)
@@ -166,10 +166,12 @@ class Reconstruct:
 
 
     def visualize(self,feature3d,feature2d,img):
+        print('feature total   ',feature3d.shape[0])
         img_c = img.copy()
         lower_label = feature3d[:,1]>0
         feature3d = feature3d[lower_label,:]
         feature2d = feature2d[lower_label,:]
+        print('feature lower   ',feature3d.shape[0])
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
         datas = self.triangle_model(feature3d,triangle_ids)
@@ -186,11 +188,14 @@ class Reconstruct:
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
         datas = self.triangle_model(feature3d,triangle_ids)
-        self.depth_generate(tri,datas,img_c)
+        #self.depth_generate(tri,datas,img_c)
         self.visualize_triangle(feature2d,triangle_ids,datas,img_c)
         self.visualize_feature(feature3d,feature2d,img_c)       
         cv2.imshow('img_no_outlier',img_c)
-        cv2.waitKey()
+        key = cv2.waitKey()
+        if key&255 == ord('q'):
+            return False
+        return True
 
         
 def main():

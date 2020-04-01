@@ -17,22 +17,25 @@ import cv2
 from thirdparty.MonocularVO.visual_odometry import PinholeCamera, VisualOdometry
 from rescale import ScaleEstimator
 from reconstruct import Reconstruct
+import param
 
 def main():
     images_path = sys.argv[1]
     images      = open(images_path)
     image_name = images.readline() # first line is not pointing to a image, so we read and skip it
     image_names= images.read().split('\n')
-    cam = PinholeCamera(1241.0, 376.0, 718.8560, 718.8560, 607.1928, 185.2157)
+    #cam = PinholeCamera(1241.0, 376.0, 718.8560, 718.8560, 607.1928, 185.2157)
     #cam = PinholeCamera(640.0, 480.0, 343.8560, 344.8560, 321.1928, 231.2157)
+    #cam = PinholeCamera(1920.0, 1080.0, 960.0, 960.0, 960.0, 480.0)
+    cam = PinholeCamera(param.img_w, param.img_h, param.img_fx, param.img_fy, param.img_cx, param.img_cy)
     vo = VisualOdometry(cam)
-    scale_estimator = ScaleEstimator(absolute_reference = 1.75)
+    scale_estimator = ScaleEstimator(absolute_reference = param.camera_h)
     reconstructer = Reconstruct(cam)
     image_id = 0
     path=[]
     scales=[]
+    scale = 1
     path.append([1,0,0,0,0,1,0,0,0,0,1,0])
-    bg_img= np.zeros((600,600,3), dtype=np.uint8)
     begin_id = 0
     for image_name in image_names:
         if image_id<begin_id:
@@ -42,7 +45,9 @@ def main():
         if len(image_name) == 0:
             break
         img = cv2.imread(image_name,0)
+        img = cv2.resize(img,(cam.width,cam.height))
         img_bgr = cv2.imread(image_name)
+        img_bgr = cv2.resize(img_bgr,(cam.width,cam.height))
         vo.update(img,image_id)
         
         if image_id>begin_id:
@@ -50,11 +55,14 @@ def main():
             feature2d[:,0] = feature2d[:,0]*cam.fx/vo.feature3d[:,2]+cam.cx
             feature2d[:,1] = feature2d[:,1]*cam.fx/vo.feature3d[:,2]+cam.cy
             #np.savetxt('feature_3d.txt',vo.feature3d)
-            if vo.feature3d.shape[0]>500:
+            print(vo.feature3d.shape)
+            if vo.feature3d.shape[0]>param.minimum_feature_for_scale:
                 scale = scale_estimator.scale_calculation(vo.feature3d,feature2d)
                 # uncomment to visualize the feature and triangle
                 #scale_estimator.visualize(vo.feature3d,feature2d,img_bgr)
-                #reconstructer.visualize(vo.feature3d,feature2d,img_bgr)
+                #re = reconstructer.visualize(vo.feature3d,feature2d,img_bgr)
+                #if re==False:
+                #    break
                 R,t = vo.get_current_state(scale)
                 M   = np.zeros((3,4))
                 M[:,0:3]=R
