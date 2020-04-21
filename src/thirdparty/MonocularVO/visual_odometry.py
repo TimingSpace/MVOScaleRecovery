@@ -105,7 +105,7 @@ class VisualOdometry:
     def processFrame(self, frame_id):
         self.px_ref, self.px_cur = featureTracking(self.last_frame, self.new_frame, self.px_ref)
         #E, mask = cv2.findEssentialMat(self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
-
+        # R,t from ref frame to cur frame
         E, mask_e = cv2.findEssentialMat(self.px_cur, self.px_ref,cameraMatrix = self.camera_matrix , method=cv2.RANSAC,
         prob=0.999, threshold=0.5)
         #_, R, t, mask = cv2.recoverPose(E, self.px_cur, self.px_ref, focal=self.focal, pp = self.pp)
@@ -129,7 +129,7 @@ class VisualOdometry:
         self.px_ref = self.px_cur
     def get_current_state(self,scale):
         self.cur_t = self.cur_t + scale*self.cur_R.dot(self.motion_t) 
-        self.cur_R = self.motion_R.dot(self.cur_R)
+        self.cur_R = self.cur_R.dot(self.motion_R)
         return self.cur_R,self.cur_t
     def visualize(self,img):
         point=(int(img.shape[1]/2+self.cur_t[0,0]),int(img.shape[0]/2-self.cur_t[2,0]))

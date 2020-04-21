@@ -36,8 +36,9 @@ class ScaleEstimator:
         print(near,far)
         for i in range(feature3d.shape[0]):
             pos_y_norm = (feature3d[i,2]-near)/(far-near)
-            cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(pos_y_norm,0,1-pos_y_norm),-1)
-
+            cv2.circle(img,(int(feature2d[i,0]),int(feature2d[i,1])),3,(255*pos_y_norm,0,255-255*pos_y_norm),-1)
+        cv2.imshow('img',img)
+        cv2.waitKey()
 
     def visualize_feature(self,feature3d,feature2d,img):
         heighest = np.min(feature3d[:,1])
@@ -114,6 +115,8 @@ class ScaleEstimator:
                 color = (abs(int(color[0]*255)),abs(int(color[1]*255)),abs(int(color[2]*255)))
                 cv2.polylines(img,[pts],True,color)
                 #cv2.fillPoly(img,[pts],color)
+
+
     '''
     check the three vertice in triangle whether satisfy
     (d_1-d_2)*(v_1-v_2)<=0 if not they are outlier
