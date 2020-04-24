@@ -46,6 +46,8 @@ class VisualOdometry:
         self.cur_t = None
         self.px_ref = None
         self.px_cur = None
+        self.px_cur_selected = None
+        self.px_ref_selected = None
         self.focal = cam.fx
         self.pp = (cam.cx, cam.cy)
         self.camera_matrix = np.eye(3)
@@ -96,6 +98,8 @@ class VisualOdometry:
         self.motion_R = self.cur_R
         self.motion_t = self.cur_t
         self.feature3d= points_3d_selected[:,0:3]
+        self.px_cur_selected   = self.px_cur[mask_bool,:]
+        self.px_ref_selected   = self.px_ref[mask_bool,:]
         #print(points_3d_selected)
 
         E, mask = cv2.findEssentialMat(self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
@@ -115,6 +119,9 @@ class VisualOdometry:
         mask_e_bool = np.array(mask_e>0).reshape(-1)
         mask_bool = mask_bool & mask_e_bool
         points_3d_selected = points_3d[:,mask_bool].T
+        ## calculate reprojection error
+        self.px_cur_selected   = self.px_cur[mask_bool,:]
+        self.px_ref_selected   = self.px_ref[mask_bool,:]
         #print(points_3d_selected.shape)
         points_3d_selected[:,0] = points_3d_selected[:,0]/points_3d_selected[:,3]
         points_3d_selected[:,1] = points_3d_selected[:,1]/points_3d_selected[:,3]
