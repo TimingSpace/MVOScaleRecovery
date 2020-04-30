@@ -1,0 +1,12 @@
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0002_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0009_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0013_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0014_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0015_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0019_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0022_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0036_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0070_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0084_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0096_sync.txt
+/data_sdd/xiangwei/kitti_data/kitti_2011_09_26/2011_09_26_drive_0101_sync.txt

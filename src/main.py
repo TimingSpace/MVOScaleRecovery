@@ -16,11 +16,13 @@ import numpy as np
 import cv2
 from thirdparty.MonocularVO.visual_odometry import PinholeCamera, VisualOdometry
 from rescale import ScaleEstimator
-from reconstruct import Reconstruct
+#from reconstruct import Reconstruct
 import param
 
 def main():
     images_path = sys.argv[1]
+    res_addr = 'result/'+images_path.split('.')[-2].split('/')[-1]+'_'
+    print(images_path.split('.')[-2].split('/')[-1])
     images      = open(images_path)
     image_name = images.readline() # first line is not pointing to a image, so we read and skip it
     image_names= images.read().split('\n')
@@ -31,7 +33,7 @@ def main():
     intrinsic_m = np.array([[param.img_fx,0,param.img_cx],[0,param.img_fy,param.img_cy],[0,0,1]])
     vo = VisualOdometry(cam)
     scale_estimator = ScaleEstimator(absolute_reference = param.camera_h,window_size=10)
-    reconstructer = Reconstruct(cam)
+    #reconstructer = Reconstruct(cam)
     image_id = 0
     path=[]
     scales=[]
@@ -89,9 +91,9 @@ def main():
         img_last = img_bgr.copy()
         image_id+=1
         
-    np.savetxt('path.txt',path)
-    np.savetxt('scales.txt',scales)
-    np.savetxt('error.txt',error)
+    np.savetxt(res_addr+'path.txt',path)
+    np.savetxt(res_addr+'scales.txt',scales)
+    np.savetxt(res_addr+'error.txt',error)
 
 
 if __name__ == '__main__':
