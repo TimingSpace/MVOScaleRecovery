@@ -13,13 +13,17 @@ lk_params = dict(winSize  = (21, 21),
                 #maxLevel = 3,
                 criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
 
+def feature_check(kp1,kp2):
+    dis = np.sum(np.abs(kp1-kp2),1)
+    valid = dis>=1
+    return kp1[valid,:],kp2[valid,:]
+
 def featureTracking(image_ref, image_cur, px_ref):
     kp2, st, err = cv2.calcOpticalFlowPyrLK(image_ref, image_cur, px_ref, None, **lk_params)  #shape: [k,2] [k,1] [k,1]
-
     st = st.reshape(st.shape[0])
     kp1 = px_ref[st == 1]
     kp2 = kp2[st == 1]
-
+    kp1,kp2 = feature_check(kp1,kp2)
     return kp1, kp2
 
 
@@ -82,9 +86,15 @@ class VisualOdometry:
         self.px_ref = self.detector.detect(self.new_frame)
         self.px_ref = np.array([x.pt for x in self.px_ref], dtype=np.float32)
         self.frame_stage = STAGE_SECOND_FRAME
+        #return True
 
     def processSecondFrame(self):
         self.px_ref, self.px_cur = featureTracking(self.last_frame, self.new_frame, self.px_ref)
+        if self.px_cur.shape[0]<10:
+            self.px_cur = self.detector.detect(self.new_frame)
+            self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            self.px_ref = self.px_cur
+            return False
 
         E, mask = cv2.findEssentialMat(self.px_cur, self.px_ref,cameraMatrix = self.camera_matrix , method=cv2.RANSAC, prob=0.999, threshold=1.0)
         _, self.cur_R, self.cur_t, mask,points_3d = cv2.recoverPose(E, self.px_cur,\
@@ -105,11 +115,16 @@ class VisualOdometry:
         E, mask = cv2.findEssentialMat(self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
         self.frame_stage = STAGE_DEFAULT_FRAME 
         self.px_ref = self.px_cur
-
+        return True
     def processFrame(self, frame_id):
         self.px_ref, self.px_cur = featureTracking(self.last_frame, self.new_frame, self.px_ref)
         #E, mask = cv2.findEssentialMat(self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
         # R,t from ref frame to cur frame
+        if self.px_cur.shape[0]<10:
+            self.px_cur = self.detector.detect(self.new_frame)
+            self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            self.px_ref = self.px_cur
+            return False
         E, mask_e = cv2.findEssentialMat(self.px_cur, self.px_ref,cameraMatrix = self.camera_matrix , method=cv2.RANSAC,
         prob=0.999, threshold=0.5)
         #_, R, t, mask = cv2.recoverPose(E, self.px_cur, self.px_ref, focal=self.focal, pp = self.pp)
@@ -134,6 +149,7 @@ class VisualOdometry:
             self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
             print('detection again',self.px_ref.shape[0],kMinNumFeature,self.px_cur.shape[0])
         self.px_ref = self.px_cur
+        return True
     def get_current_state(self,scale):
         self.cur_t = self.cur_t + scale*self.cur_R.dot(self.motion_t) 
         self.cur_R = self.cur_R.dot(self.motion_R)
@@ -145,9 +161,10 @@ class VisualOdometry:
         assert(img.ndim==2 and img.shape[0]==self.cam.height and img.shape[1]==self.cam.width), "Frame: provided image has not the same size as the camera model or image is not grayscale"
         self.new_frame = img
         if(self.frame_stage == STAGE_DEFAULT_FRAME):
-            self.processFrame(frame_id)
+            flag= self.processFrame(frame_id)
         elif(self.frame_stage == STAGE_SECOND_FRAME):
-            self.processSecondFrame()
+            flag= self.processSecondFrame()
         elif(self.frame_stage == STAGE_FIRST_FRAME):
-            self.processFirstFrame()
+            flag= self.processFirstFrame()
         self.last_frame = self.new_frame
+        return flag

@@ -85,8 +85,8 @@ def main():
                 pitch = scale_estimator.initial_estimation(vo.motion_t.reshape(-1))
                 pitchs.append(pitch)
                 scale,std = scale_estimator.scale_calculation(vo.feature3d,feature2d,img_bgr)
-
-                print('predict,real,std',scale,real_scale[image_id-1],std)
+                if real_scale is not None:
+                    print('predict,real,std',scale,real_scale[image_id-1],std)
                 #if(np.abs(scale-real_scale[image_id-1])>0.3 and std<0.3):
                 if(False):#  and abs(real_scale[image_id-1]-scale)>0.3):
                     scale_estimator.check_full_distribution(vo.feature3d.copy(),feature2d.copy(),real_scale[image_id-1],img_bgr)
