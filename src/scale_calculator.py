@@ -66,12 +66,15 @@ class ScaleEstimator:
             intersect = graph_meta[a].intersection(graph_meta[b])
             if len(intersect)!=0:
                 graph[i].append(list(intersect)[0])
+                graph[list(intersect)[0]].append(i)
             intersect = graph_meta[a].intersection(graph_meta[c])
             if len(intersect)!=0:
                 graph[i].append(list(intersect)[0])
+                graph[list(intersect)[0]].append(i)
             intersect = graph_meta[b].intersection(graph_meta[c])
             if len(intersect)!=0:
                 graph[i].append(list(intersect)[0])
+                graph[list(intersect)[0]].append(i)
             graph_meta[a].add(i)
             graph_meta[b].add(i)
             graph_meta[c].add(i)
@@ -162,7 +165,15 @@ class ScaleEstimator:
         print('feature left     ',np.sum(outliers>=0))
         valid_id = (outliers>=0)
         return valid_id
-
+    
+    def compare(self,a,b,threshold=0.1):
+        if a - b< -threshold:
+            return -1
+        elif a-b> threshold:
+            return 1
+        else:
+            return 0
+    
     def feature_selection_by_tri_graph(self,feature3d,triangle_ids):
         graph = self.triangle2region_graph(triangle_ids)
         #calculating the geometry model of each triangle
@@ -174,17 +185,39 @@ class ScaleEstimator:
         pitch_deg   = np.arcsin(-normals[:,1])*180/np.pi #[-90,90]
         heights     = np.mean(triangles[:,:,1],1)
 
-        p_road           = (-70 - pitch_deg)/20
+        p_road           = (-70 - pitch_deg)/20-0.2
         p_road[p_road<0] = 0
         valid_pitch_id = pitch_deg<-80
-        print('triangle left ',np.sum(valid_pitch_id),'from',valid_pitch_id.shape[0])
         unvalid_pitch_id = pitch_deg>=-80
+        valid_triangle_ids = bool2id(valid_pitch_id)
+        observation_matrix = np.array([[0.33,0.33,0.33],[0.03,0.07,0.90],[0.90,0.07,0.03],[0.05,0.9,0.05]])
+        for valid_triangle_id in valid_triangle_ids:
+            mb_ids = np.array(graph[valid_triangle_id])
+
+            #plt.plot(heights[mb_ids],'.-g')
+            #plt.plot(p_road[mb_ids],'.-r')
+            #plt.plot(heights[valid_triangle_id],'g*')
+            #plt.plot(p_road[valid_triangle_id],'r*')
+            ha = heights[valid_triangle_id]
+            pa = p_road[valid_triangle_id]
+            prab=[]
+            #print('initial prab',pa)
+            for mb_id in  mb_ids:
+                hc = heights[mb_id]
+                pc = p_road[mb_id]
+                cr = self.compare(hc,ha)
+                potential_matrix = np.array([(1-pa)*(1-pc),(1-pa)*pc,pa*(1-pc),pa*pc])
+                pa = observation_matrix[2:4,cr+1]@potential_matrix[2:4] /(observation_matrix[:,cr+1]@potential_matrix)
+                prab.append(pa)
+                #print(pa)
+            p_road[valid_triangle_id] = pa
+            #plt.ylim()
+        print('triangle left ',np.sum(valid_pitch_id),'from',valid_pitch_id.shape[0])
         height_level = (np.mean(heights[unvalid_pitch_id]))
         self.height_level = height_level
         print('height level',height_level)
-        valid_height_id = heights>height_level
-        valid_id = valid_pitch_id & valid_height_id
-        #valid_id = valid_pitch_id
+        valid_id = p_road>0.5       #valid_id = valid_pitch_id
+        print('triangle left final',np.sum(valid_id),'from',valid_id.shape[0])
         valid_points_id = np.unique(triangle_ids[valid_id].reshape(-1))
         return valid_points_id
 
@@ -201,6 +234,7 @@ class ScaleEstimator:
         
         valid_pitch_id = pitch_deg<-80
         
+        print('triangle left ',np.sum(valid_pitch_id),'from',valid_pitch_id.shape[0])
         heights     = np.mean(triangles[:,:,1],1)
         unvalid_pitch_id = pitch_deg>=-80
         height_level = (np.mean(heights[unvalid_pitch_id]))
@@ -208,6 +242,7 @@ class ScaleEstimator:
         print('height level',height_level)
         valid_height_id = heights>height_level
         valid_id = valid_pitch_id & valid_height_id
+        print('triangle left final',np.sum(valid_id),'from',valid_id.shape[0])
         #valid_id = valid_pitch_id
         valid_points_id = np.unique(triangle_ids[valid_id].reshape(-1))
         return valid_points_id
@@ -235,7 +270,7 @@ class ScaleEstimator:
             return None
 
         # 3. select feature with similar model with road
-        selected_id = self.feature_selection_by_tri_graph(feature3d,triangle_ids)
+        selected_id = self.feature_selection_by_tri(feature3d,triangle_ids)
         if(len(selected_id)>0):
             self.flat_feature_2d = feature2d[selected_id]
             return  feature3d[selected_id]
@@ -328,7 +363,12 @@ class ScaleEstimator:
         z=feature3d[:,1]*np.sin(self.camera_pitch)+feature3d[:,2]*np.cos(self.camera_pitch)
         feature3d[:,1]=y
         feature3d[:,2]=z
-
+    
+    def scale_filtering(self,scale):
+        self.scale_queue.append(scale)
+        if len(self.scale_queue)>self.window_size:
+            self.scale_queue.popleft()
+        return np.median(self.scale_queue)
     def scale_calculation(self,feature3d,feature2d,img=None):
         scale = 0       
         std   = 100
@@ -341,7 +381,7 @@ class ScaleEstimator:
         else:
             scale = self.absolute_reference/self.height_level
             print('no enough feature on road')
-        return scale,std
+        return self.scale_filtering(scale),std
 
 
         #return scale,std
@@ -454,7 +494,7 @@ class ScaleEstimator:
             #ax2.plot(bins[:-1],0.1*dis,'g-*',label='Depth-correct Features')
         if self.flat_feature is not None and len(self.flat_feature)>0:
             flat_feature = np.array(self.flat_feature)
-            dis,bins =np.histogram(flat_feature[:,1],bins = np.array(range(0,50))*0.1)
+            dis,bins =np.histogram(flat_feature[:,1],bins = np.array(range(0,50))*0.1,density=True)
             ax2.plot(bins[:-1],0.1*dis,'y-*',label='Selected Features')
         ax2.set_title('vertical distribution')
         ax2.set_xlabel('y')
@@ -507,6 +547,7 @@ class ScaleEstimator:
             return 
 
         selected_id = self.feature_selection_by_tri(feature3d,triangle_ids)
+        #selected_id = self.feature_selection_by_tri_graph(feature3d,triangle_ids)
         if(len(selected_id)>0):
             point_selected =   feature3d[selected_id]
             point_selected_2d =   feature2d[selected_id]
@@ -519,10 +560,9 @@ class ScaleEstimator:
         self.img = img
 
 
-
 def bool2id(flag):
     id_array = np.array(range(0,flag.shape[0]))
-    ids      = id_array(flag)
+    ids      = id_array[flag]
     return ids
 
 def draw_feature(img,feature,color=(255,255,0)):

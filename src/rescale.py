@@ -29,7 +29,7 @@ class ScaleEstimator:
         self.vanish =  185
     def initial_estimation(self,motion_matrix):
 
-        return pitch_angle,rotation_angle
+        return 0
     def visualize_distance(self,feature3d,feature2d,img):
         near = np.min(feature3d[:,2])
         far   = np.max(feature3d[:,2])
@@ -152,7 +152,7 @@ class ScaleEstimator:
         return outliers
 
 
-    def scale_calculation(self,feature3d,feature2d):
+    def scale_calculation(self,feature3d,feature2d,img=None):
         
         lower_feature_ids = feature2d[:,1]>self.vanish
         feature2d = feature2d[lower_feature_ids,:]
@@ -244,7 +244,7 @@ class ScaleEstimator:
         self.scale_queue.append(self.scale)
         if len(self.scale_queue)>self.window_size:
             self.scale_queue.popleft()
-        return np.median(self.scale_queue)
+        return np.median(self.scale_queue),1
 
 
 def main():
