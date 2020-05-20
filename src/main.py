@@ -15,16 +15,18 @@ import sys
 import numpy as np
 import cv2
 from thirdparty.MonocularVO.visual_odometry import PinholeCamera, VisualOdometry
-from scale_calculator import ScaleEstimator
-from rescale import ScaleEstimator
+#from scale_calculator import ScaleEstimator
+from rescale_test import ScaleEstimator
 #from reconstruct import Reconstruct
 import param
 
 def main():
     real_scale=None
+    tag = '.test_001'
     images_path = sys.argv[1]
     if len(sys.argv)>2:
-        real_scale = np.loadtxt(sys.argv[2])
+        tag = sys.argv[2]
+    #    real_scale = np.loadtxt(sys.argv[2])
     res_addr = 'result/'+images_path.split('.')[-2].split('/')[-1]+'_'
     print(images_path.split('.')[-2].split('/')[-1])
     images      = open(images_path)
@@ -120,11 +122,11 @@ def main():
         img_last = img_bgr.copy()
         image_id+=1
     #np.savetxt(res_addr+'features.txt',scale_estimator.all_features)
-    np.savetxt(res_addr+'path.txt',path)
-    np.savetxt(res_addr+'motions.txt',motions)
-    np.savetxt(res_addr+'scales.txt',scales[1:])
-    np.savetxt(res_addr+'error.txt',error)
-    np.savetxt(res_addr+'pitch.txt',pitchs)
+    np.savetxt(res_addr+'path.txt'+tag,path)
+    np.savetxt(res_addr+'motions.txt'+tag,motions)
+    np.savetxt(res_addr+'scales.txt'+tag,scales[1:])
+    np.savetxt(res_addr+'error.txt'+tag,error)
+    np.savetxt(res_addr+'pitch.txt'+tag,pitchs)
 
 
 if __name__ == '__main__':

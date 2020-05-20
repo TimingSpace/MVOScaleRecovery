@@ -338,7 +338,7 @@ class ScaleEstimator:
             # ransac
         a_array = np.array(feature3d)
         m,b = get_pitch_ransac(a_array,30,0.005)
-        inlier_id = get_inliers(m,feature3d[:,:],0.005)
+        inlier_id = get_inliers(m,feature3d[:,:],0.01)
         inliers = feature3d[inlier_id,:]
         road_model_ransac = np.array(m)
         normal = road_model_ransac[0:-1]
@@ -350,7 +350,7 @@ class ScaleEstimator:
 
         normal_len = np.sqrt(np.sum(normal*normal)) 
         ransac_camera_height = h_bar/normal_len
-        ransac_camera_height = np.median(feature3d[:,1])
+        #ransac_camera_height = np.median(feature3d[:,1])
         pitch =  np.arcsin(-normal[1]/normal_len)
         return ransac_camera_height,pitch,inliers
 

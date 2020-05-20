@@ -1,0 +1,15 @@
+result/*
+dataset/*
+*.txt*
+*.png
+log*
+*.sw[po]
+*/*.sw[po]
+*/*/*.sw[po]
+__pycache__/*
+*/__pycache__/*
+*/*/__pycache__/*
+*/*/*/__pycache__/*
+*.DS*
+*/*.DS*
+*/*/*.DS*
