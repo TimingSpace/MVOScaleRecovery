@@ -25,6 +25,15 @@ def main():
     real_scale=None
     tag = '.test_001'
     images_path = sys.argv[1]
+    print(images_path)
+    seq = images_path.split('_')[-1][:2]
+    print(seq)
+    calib = open('dataset/'+str(seq)+'_calib.txt').read()
+    calib = calib.split(' ')
+    f     = float(calib[1])
+    cx     = float(calib[3])
+    cy     = float(calib[7])
+
     if len(sys.argv)>2:
         tag = sys.argv[2]
     #    real_scale = np.loadtxt(sys.argv[2])
@@ -33,10 +42,14 @@ def main():
     images      = open(images_path)
     image_name = images.readline() # first line is not pointing to a image, so we read and skip it
     image_names= images.read().split('\n')
+    h,w,c = cv2.imread(image_names[0]).shape
+
+    print(f,cx,cy,h,w,c)
     #cam = PinholeCamera(1241.0, 376.0, 718.8560, 718.8560, 607.1928, 185.2157)
     #cam = PinholeCamera(640.0, 480.0, 343.8560, 344.8560, 321.1928, 231.2157)
     #cam = PinholeCamera(1920.0, 1080.0, 960.0, 960.0, 960.0, 480.0)
-    cam = PinholeCamera(param.img_w, param.img_h, param.img_fx, param.img_fy, param.img_cx, param.img_cy)
+    #cam = PinholeCamera(param.img_w, param.img_h, param.img_fx, param.img_fy, param.img_cx, param.img_cy)
+    cam = PinholeCamera(w, h, f, f, cx, cy)
     intrinsic_m = np.array([[param.img_fx,0,param.img_cx],[0,param.img_fy,param.img_cy],[0,0,1]])
     vo = VisualOdometry(cam)
     scale_estimator = ScaleEstimator(absolute_reference = param.camera_h,window_size=5)
@@ -70,7 +83,7 @@ def main():
         img = cv2.imread(image_name,0)
         img = cv2.resize(img,(cam.width,cam.height))
         img_bgr = cv2.imread(image_name)
-        img_bgr = cv2.resize(img_bgr,(cam.width,cam.height))
+        #img_bgr = cv2.resize(img_bgr,(cam.width,cam.height))
         move_flag = vo.update(img,image_id)
         print(move_flag)
         if (not move_flag) and image_id>1:
@@ -138,7 +151,7 @@ def main():
     data_to_save['feature3ds'] = feature3ds
     data_to_save['feature2ds'] = feature2ds
     data_to_save['move_flags'] = move_flags
-    np.save(res_addr+tag+'result.npy',data_to_save)
+    np.save(res_addr+'result.npy'+tag,data_to_save)
     np.savetxt(res_addr+'path.txt'+tag,path)
     np.savetxt(res_addr+'motions.txt'+tag,motions)
     np.savetxt(res_addr+'scales.txt'+tag,scales[1:])

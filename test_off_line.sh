@@ -1,4 +1,6 @@
 #!/bin/bash
+python src/main.py dataset/kitti_image_$2.txt .mvo > log_result/log_motion_.mvo_$2
+echo "motion estimation done"
 for num in 0 1 2 3 4 5 6 7 8 9
 do
     python src/main_offline.py  result/kitti_image_$2_result.npy.mvo.npy $1$num>log_result/log_rescale_$1_$2_$num
