@@ -16,7 +16,8 @@ import numpy as np
 import cv2
 from thirdparty.MonocularVO.visual_odometry import PinholeCamera, VisualOdometry
 #from scale_calculator import ScaleEstimator
-from rescale_test import ScaleEstimator
+#from rescale_test import ScaleEstimator
+from rescale import ScaleEstimator
 #from reconstruct import Reconstruct
 import param
 
@@ -28,7 +29,7 @@ def main():
         tag = sys.argv[2]
     #    real_scale = np.loadtxt(sys.argv[2])
     res_addr = 'result/'+images_path.split('.')[-2].split('/')[-1]+'_'
-    print(images_path.split('.')[-2].split('/')[-1])
+    print(res_addr,tag)
     images      = open(images_path)
     image_name = images.readline() # first line is not pointing to a image, so we read and skip it
     image_names= images.read().split('\n')
@@ -46,11 +47,15 @@ def main():
     error =[]
     pitchs=[]
     motions=[]
+    feature2ds = []
+    feature3ds = []
+    move_flags = []
     scale = 1
     path.append([1,0,0,0,0,1,0,0,0,0,1,0])
     scales.append(0)
     error.append(100)
     begin_id = 0
+    
     end_id   =  None
     img_last = []
     for image_name in image_names:
@@ -73,7 +78,10 @@ def main():
             motions.append([1,0,0,0,0,1,0,0,0,0,1,0])
             scales.append(0)
             error.append(0)
+            feature2ds.append([])
+            feature3ds.append([])
             image_id+=1
+            move_flags.append(move_flag)
             continue
         #print(vo.motion_t)       
         #print(vo.motion_R)
@@ -81,6 +89,9 @@ def main():
             feature2d = vo.feature3d[:,0:2].copy()
             feature2d[:,0] = feature2d[:,0]*cam.fx/vo.feature3d[:,2]+cam.cx
             feature2d[:,1] = feature2d[:,1]*cam.fx/vo.feature3d[:,2]+cam.cy
+            feature3ds.append(vo.feature3d.copy())
+            feature2ds.append(feature2d.copy())
+            move_flags.append(True)
             #np.savetxt('feature_3d.txt',vo.feature3d)
             print('feature mumber',vo.feature3d.shape)
             if vo.feature3d.shape[0]>param.minimum_feature_for_scale:
@@ -122,6 +133,12 @@ def main():
         img_last = img_bgr.copy()
         image_id+=1
     #np.savetxt(res_addr+'features.txt',scale_estimator.all_features)
+    data_to_save = {}
+    data_to_save['motions'] = motions
+    data_to_save['feature3ds'] = feature3ds
+    data_to_save['feature2ds'] = feature2ds
+    data_to_save['move_flags'] = move_flags
+    np.save(res_addr+tag+'result.npy',data_to_save)
     np.savetxt(res_addr+'path.txt'+tag,path)
     np.savetxt(res_addr+'motions.txt'+tag,motions)
     np.savetxt(res_addr+'scales.txt'+tag,scales[1:])

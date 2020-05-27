@@ -135,14 +135,14 @@ class ScaleEstimator:
                 d = (1-reliability[i])*(1-reliability[j])
                 # abmormal
                 if self.check_depth(feature2d[[i,j],1],feature3d[[i,j],2]):
-                    reliability[i] = (0.5*c)/(0.5*(b+c)+0.25*d)
-                    reliability[j] = (0.5*b)/(0.5*(b+c)+0.25*d)
+                    reliability[i] = (0.25*c)/(0.25*(b+c)+0.5*d)
+                    reliability[j] = (0.25*b)/(0.25*(b+c)+0.5*d)
                 else:
                     #normal
-                    reliability[i] = (a+0.5*c)/(a+0.5*(b+c)+0.75*d)
-                    reliability[j] = (a+0.5*b)/(a+0.5*(b+c)+0.75*d)
+                    reliability[i] = (a+0.25*c)/(a+0.25*(b+c)+0.5*d)
+                    reliability[j] = (a+0.25*b)/(a+0.25*(b+c)+0.5*d)
 
-        valid_id = reliability>0.5
+        valid_id = reliability>0.8
         print('reliability',np.min(reliability),np.median(reliability),np.max(reliability))
         print('feature rejected ',np.sum(valid_id==False))
         print('feature left     ',np.sum(valid_id))
@@ -256,8 +256,8 @@ class ScaleEstimator:
         # 2. select feature with wrong depth estimation
         tri = Delaunay(feature2d)
         triangle_ids = tri.simplices
-        valid_id = self.find_reliability_by_graph(feature3d,feature2d,triangle_ids)
-        #valid_id = self.find_outliers(feature3d,feature2d,triangle_ids)
+        #valid_id = self.find_reliability_by_graph(feature3d,feature2d,triangle_ids)
+        valid_id = self.find_outliers(feature3d,feature2d,triangle_ids)
         
 
         if(valid_id.shape[0]>3):
@@ -291,7 +291,36 @@ class ScaleEstimator:
                 unvalid_flag |= (feature3d[:,1]>bin_single-0.1)&(feature3d[:,1]<=bin_single)
             feature3d=feature3d[unvalid_flag==False,:]
         return feature3d
-
+    def road_model_calculation_static_tri(self,heights):
+        print('flat features',len(heights))
+        heights_inv = 1/heights
+        dis,bins =np.histogram(heights_inv,bins = np.array(range(0,20))*0.1)
+        #heights_inv = self.remove_single(heights_inv,dis,bins)
+        dis[dis==1]=0
+        modes = self.check_mode(dis,bins)
+        print('mode number',len(modes))
+        if len(modes)==0:
+            return np.median(heights_inv),0,1
+        else:
+            reverse_modes = self.check_reverse_mode(dis)
+            mode_right = int(modes[0][-1]*10)
+            mode_left  = int(modes[0][0]*10)
+            mode = (mode_left+mode_right)/2
+            skewness = 0
+            return mode/10,0,1;
+            if len(modes)>1:
+                skewness = self.check_skewness(heights_inv,mode=mode/10)
+                print('skewness',skewness,'\n')
+            else:
+                skewness = self.check_skewness(heights_inv,mode=mode/10,method='p2')
+                print('skewness',skewness,'\n')
+            if skewness>-0.3:
+                return mode/10,0,1
+            else:
+                reverse_modes_left = reverse_modes[:mode_left]
+                left = bins[1:mode_left+1][reverse_modes_left][-1]
+                return left,0,1
+     
     def road_model_calculation_static(self,feature3d):
         print('flat features',feature3d.shape)
         dis,bins =np.histogram(feature3d[:,1],bins = np.array(range(0,170))*0.1)
@@ -369,6 +398,16 @@ class ScaleEstimator:
         if len(self.scale_queue)>self.window_size:
             self.scale_queue.popleft()
         return np.median(self.scale_queue)
+    def scale_calculation_static(self,point_selected):
+        self.feature_remap(point_selected)
+        if(point_selected is not None):
+            height,pitch,std= self.road_model_calculation(point_selected)
+            scale = self.absolute_reference/height
+        else:
+            scale = self.absolute_reference/self.height_level
+            print('no enough feature on road')
+        return self.scale_filtering(scale),std
+
     def scale_calculation(self,feature3d,feature2d,img=None):
         scale = 0       
         std   = 100

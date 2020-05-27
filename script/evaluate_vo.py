@@ -43,7 +43,7 @@ def calculate_sequence_error(poses_gt,poses_result):
 
     # paramet
     step_size = 10; # every second
-    lengths   = [10,20,50,100,200,300,400,500,600,700,800,900,1000]
+    lengths   = [100,200,300,400,500,600,700,800]
     num_lengths = len(lengths)
 
     # pre-compute distances (from ground truth as reference)
@@ -78,7 +78,7 @@ def calculate_sequence_error(poses_gt,poses_result):
             # return error vector
     return errors
 def calculate_ave_errors(errors):
-    lengths   = [10,20,50,100,200,300,400,500,600,700,800,900,1000]
+    lengths   = [100,200,300,400,500,600,700,800]
     rot_errors=[]
     tra_errors=[]
     tra_errors_all = []
@@ -90,34 +90,21 @@ def calculate_ave_errors(errors):
                 rot_error_each_length.append(error[1])
                 tra_error_each_length.append(error[2])
         tra_errors_all.append(tra_error_each_length)
-        rot_errors.append(sum(rot_error_each_length)/len(rot_error_each_length))
-        tra_errors.append(sum(tra_error_each_length)/len(tra_error_each_length))
+        if len(rot_error_each_length)>0:
+            rot_errors.append(sum(rot_error_each_length)/len(rot_error_each_length))
+            tra_errors.append(sum(tra_error_each_length)/len(tra_error_each_length))
     return np.array(rot_errors)*180/np.pi,tra_errors,tra_errors_all
 def  main():
     # usage: python main.py path_to_ground_truth path_to_predict_pose
     # load and preprocess data
     ground_truth_data  = np.loadtxt(sys.argv[1])
     predict_pose__data = np.loadtxt(sys.argv[2])
-    #predict_pose__data_2 = np.loadtxt(sys.argv[3])
     errors = calculate_sequence_error(ground_truth_data,predict_pose__data)
-    #errors_2 = calculate_sequence_error(ground_truth_data,predict_pose__data_2)
 
     rot,tra,tra_all_1 = calculate_ave_errors(errors)
     errors_array = np.array(errors)
-    print('\n',tra)
-    #rot,tra,tra_all_2 = calculate_ave_errors(errors_2)
-    #errors_array = np.array(errors)
-    #print('\n',tra)
-    '''
-    for i in range(0,len(tra_all_1)):
-        plt.plot(tra_all_1[i],label='path 1')
-        plt.plot(tra_all_2[i],label='path 2')
-        plt.legend()
-        plt.show()
-    '''
-    #print(error)
-    # evaluate the vo result
-    # save and visualization the evaluatation result
+    print(tra,rot)
+    print(np.mean(tra),np.mean(rot))
 
 if __name__ == "__main__":
     main()
