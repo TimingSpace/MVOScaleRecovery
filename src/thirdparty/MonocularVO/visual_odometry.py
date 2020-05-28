@@ -3,7 +3,7 @@
 import numpy as np 
 import cv2
 import param
-
+import detector as dt
 STAGE_FIRST_FRAME = 0
 STAGE_SECOND_FRAME = 1
 STAGE_DEFAULT_FRAME = 2
@@ -64,7 +64,8 @@ class VisualOdometry:
         self.feature3d= None
         #print(self.camera_matrix)
         self.trueX, self.trueY, self.trueZ = 0, 0, 0
-        self.detector = cv2.FastFeatureDetector_create(threshold=param.fast_threshold, nonmaxSuppression=True)
+        #self.detector = cv2.FastFeatureDetector_create(threshold=param.fast_threshold, nonmaxSuppression=True)
+        self.detector =  dt.FeatureDetector()#cv2.FastFeatureDetector_create(threshold=param.fast_threshold, nonmaxSuppression=True)
         self.annotations = None
         if annotations!=None:
             with open(annotations) as f:
@@ -84,7 +85,7 @@ class VisualOdometry:
 
     def processFirstFrame(self):
         self.px_ref = self.detector.detect(self.new_frame)
-        self.px_ref = np.array([x.pt for x in self.px_ref], dtype=np.float32)
+        #self.px_ref = np.array([x.pt for x in self.px_ref], dtype=np.float32)
         self.frame_stage = STAGE_SECOND_FRAME
         #return True
 
@@ -92,7 +93,7 @@ class VisualOdometry:
         self.px_ref, self.px_cur = featureTracking(self.last_frame, self.new_frame, self.px_ref)
         if self.px_cur.shape[0]<10:
             self.px_cur = self.detector.detect(self.new_frame)
-            self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            #self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
             self.px_ref = self.px_cur
             return False
 
@@ -122,7 +123,7 @@ class VisualOdometry:
         # R,t from ref frame to cur frame
         if self.px_cur.shape[0]<10:
             self.px_cur = self.detector.detect(self.new_frame)
-            self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            #self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
             self.px_ref = self.px_cur
             return False
         E, mask_e = cv2.findEssentialMat(self.px_cur, self.px_ref,cameraMatrix = self.camera_matrix , method=cv2.RANSAC,
@@ -146,7 +147,7 @@ class VisualOdometry:
         self.feature3d= points_3d_selected[:,0:3]
         if(self.px_ref.shape[0] < kMinNumFeature):
             self.px_cur = self.detector.detect(self.new_frame)
-            self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
+            #self.px_cur = np.array([x.pt for x in self.px_cur], dtype=np.float32)
             print('detection again',self.px_ref.shape[0],kMinNumFeature,self.px_cur.shape[0])
         self.px_ref = self.px_cur
         return True
